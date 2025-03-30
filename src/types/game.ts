@@ -7,6 +7,7 @@ export interface GameState {
   wave: number;
   gameStatus: 'menu' | 'playing' | 'paused' | 'gameover';
   kills: number;
+  dayTime: number; // 0-1 value representing time of day cycle
 }
 
 export interface Zombie {
@@ -18,6 +19,8 @@ export interface Zombie {
   damage: number;
   model: any; // Three.js mesh
   isDead: boolean;
+  lastMoveTime?: number; // For staggered movement timing
+  screamChance?: number; // Chance to make zombie sound
 }
 
 export interface Weapon {
@@ -42,3 +45,10 @@ export type ControlKeys = {
   sprint: boolean;
   reload: boolean;
 };
+
+export interface EnvironmentSettings {
+  fogDensity: number;
+  fogColor: string;
+  ambientLightIntensity: number;
+  skyColor: string;
+}

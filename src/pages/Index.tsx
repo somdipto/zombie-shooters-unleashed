@@ -16,7 +16,7 @@ import {
   shootZombie,
   checkZombieCollisions
 } from '@/utils/three-utils';
-import { GameState, Zombie, ControlKeys } from '@/types/game';
+import { GameState, Zombie, ControlKeys, EnvironmentSettings } from '@/types/game';
 import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
@@ -35,7 +35,8 @@ const Index = () => {
     score: 0,
     wave: 1,
     gameStatus: 'menu',
-    kills: 0
+    kills: 0,
+    dayTime: 0.2 // Start at night-time for horror atmosphere
   });
   
   const controlsRef = useRef<ControlKeys>({
@@ -56,6 +57,12 @@ const Index = () => {
   const waveStartTime = useRef(0);
   const zombiesInWave = useRef(0);
   const zombiesKilled = useRef(0);
+  const environmentSettings = useRef<EnvironmentSettings>({
+    fogDensity: 0.015,
+    fogColor: '#8B0000',
+    ambientLightIntensity: 0.7,
+    skyColor: '#1a1a1a'
+  });
   
   // Initialize game
   useEffect(() => {
@@ -79,6 +86,13 @@ const Index = () => {
     cameraRef.current = camera;
     rendererRef.current = renderer;
     weaponRef.current = weapon;
+    
+    // Show intro toast message for atmosphere
+    toast({
+      title: "Last Survivor",
+      description: "You're the only human left. Survive as long as you can...",
+      duration: 5000,
+    });
     
     // Set up window resize handler
     const handleResize = () => {
@@ -106,25 +120,65 @@ const Index = () => {
     let animationFrameId: number;
     
     const animate = (time: number) => {
-      if (gameState.gameStatus !== 'playing') {
-        animationFrameId = requestAnimationFrame(animate);
-        return;
-      }
-      
       if (!lastTime.current) lastTime.current = time;
       const deltaTime = Math.min(time - lastTime.current, 100);
       lastTime.current = time;
       
-      // Update player movement
-      updatePlayerMovement(deltaTime);
+      // Update day/night cycle if playing
+      if (gameState.gameStatus === 'playing') {
+        // Very slow day/night cycle - one full cycle every 15 minutes
+        const dayTimeIncrement = deltaTime / (15 * 60 * 1000);
+        setGameState(prev => ({
+          ...prev,
+          dayTime: (prev.dayTime + dayTimeIncrement) % 1
+        }));
+        
+        // Update scene based on time of day
+        updateEnvironment(gameState.dayTime);
+      }
       
-      // Update zombie movement
-      if (cameraRef.current && zombiesRef.current.length > 0) {
+      // Update player movement if playing
+      if (gameState.gameStatus === 'playing') {
+        updatePlayerMovement(deltaTime);
+      }
+      
+      // Update zombie movement if playing
+      if (gameState.gameStatus === 'playing' && cameraRef.current && zombiesRef.current.length > 0) {
         updateZombies(
           zombiesRef.current, 
           cameraRef.current.position, 
           deltaTime
         );
+        
+        // Random zombie sounds for atmosphere
+        if (Math.random() > 0.997) {
+          const randomIndex = Math.floor(Math.random() * zombiesRef.current.length);
+          const zombie = zombiesRef.current[randomIndex];
+          
+          if (!zombie.isDead) {
+            // Calculate distance to player
+            const distToPlayer = new THREE.Vector3(
+              cameraRef.current.position.x - zombie.position.x,
+              0,
+              cameraRef.current.position.z - zombie.position.z
+            ).length();
+            
+            // Only play sounds for zombies within hearing range
+            if (distToPlayer < 30) {
+              // Different sound type based on zombie type
+              const soundType = zombie.type === 'runner' ? 'screech' : 
+                               zombie.type === 'tank' ? 'roar' : 'moan';
+              
+              // Volume based on distance
+              const volume = Math.max(0.1, 1 - (distToPlayer / 30));
+              
+              toast({
+                description: `You hear a ${soundType} nearby...`,
+                duration: 1500,
+              });
+            }
+          }
+        }
         
         // Check for zombie collisions
         if (cameraRef.current) {
@@ -141,6 +195,7 @@ const Index = () => {
       
       // Check if wave is complete
       if (
+        gameState.gameStatus === 'playing' &&
         zombiesRef.current.length > 0 && 
         zombiesRef.current.every(z => z.isDead) &&
         time - waveStartTime.current > 5000 && // Ensure wave has been active for at least 5 seconds
@@ -168,7 +223,101 @@ const Index = () => {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [gameState.gameStatus]);
+  }, [gameState.gameStatus, gameState.dayTime]);
+  
+  // Update environment based on time of day
+  const updateEnvironment = (dayTime: number) => {
+    if (!sceneRef.current) return;
+    
+    // Circle from dawn (0) to noon (0.25) to sunset (0.5) to midnight (0.75)
+    // Determine time period
+    let timeOfDay: 'dawn' | 'day' | 'sunset' | 'night';
+    
+    if (dayTime < 0.2 || dayTime > 0.8) {
+      timeOfDay = 'night';
+    } else if (dayTime < 0.3) {
+      timeOfDay = 'dawn';
+    } else if (dayTime < 0.7) {
+      timeOfDay = 'day';
+    } else {
+      timeOfDay = 'sunset';
+    }
+    
+    // Update fog based on time of day
+    if (sceneRef.current.fog instanceof THREE.FogExp2) {
+      switch (timeOfDay) {
+        case 'dawn':
+          sceneRef.current.fog.color.set('#8B4513');
+          sceneRef.current.fog.density = 0.02;
+          break;
+        case 'day':
+          sceneRef.current.fog.color.set('#CCCCCC');
+          sceneRef.current.fog.density = 0.01;
+          break;
+        case 'sunset':
+          sceneRef.current.fog.color.set('#CC6600');
+          sceneRef.current.fog.density = 0.015;
+          break;
+        case 'night':
+          sceneRef.current.fog.color.set('#1a1a1a');
+          sceneRef.current.fog.density = 0.025;
+          break;
+      }
+    }
+    
+    // Update lighting
+    sceneRef.current.traverse(object => {
+      if (object instanceof THREE.DirectionalLight) {
+        // Sun/moon light
+        switch (timeOfDay) {
+          case 'dawn':
+            object.color.set('#FFA07A');
+            object.intensity = 0.6;
+            break;
+          case 'day':
+            object.color.set('#FFFFFF');
+            object.intensity = 1.0;
+            break;
+          case 'sunset':
+            object.color.set('#FF4500');
+            object.intensity = 0.7;
+            break;
+          case 'night':
+            object.color.set('#A0A0FF');
+            object.intensity = 0.3;
+            break;
+        }
+      } else if (object instanceof THREE.AmbientLight) {
+        // Ambient light
+        switch (timeOfDay) {
+          case 'dawn':
+            object.color.set('#323232');
+            object.intensity = 0.6;
+            break;
+          case 'day':
+            object.color.set('#454545');
+            object.intensity = 0.8;
+            break;
+          case 'sunset':
+            object.color.set('#302520');
+            object.intensity = 0.5;
+            break;
+          case 'night':
+            object.color.set('#151520');
+            object.intensity = 0.3;
+            break;
+        }
+      } else if (object instanceof THREE.PointLight) {
+        // Fire lights become more visible at night
+        if (timeOfDay === 'night' || timeOfDay === 'sunset') {
+          object.intensity = 1.8;
+          object.distance *= 1.2;
+        } else {
+          object.intensity = 1.0;
+        }
+      }
+    });
+  };
   
   // Input handling
   useEffect(() => {
@@ -323,6 +472,28 @@ const Index = () => {
       camera.position.y = 1.6;
       playerOnGround.current = true;
     }
+    
+    // Footstep sounds when moving
+    if ((controls.forward || controls.backward || controls.left || controls.right) && 
+        playerOnGround.current && Math.random() > 0.98) {
+      // Footstep sound based on sprint
+      const stepType = controls.sprint ? 'running' : 'walking';
+      
+      // Only show for certain steps to not spam
+      if (Math.random() > 0.7) {
+        toast({
+          description: `*${stepType} sound*`,
+          duration: 300,
+        });
+      }
+    }
+    
+    // Head bob effect for walking
+    if (playerOnGround.current && (controls.forward || controls.backward || controls.left || controls.right)) {
+      const bobFrequency = controls.sprint ? 12 : 8;
+      const bobAmount = controls.sprint ? 0.015 : 0.01;
+      camera.position.y += Math.sin(Date.now() / bobFrequency * Math.PI) * bobAmount;
+    }
   };
   
   // Handle jumping
@@ -375,6 +546,26 @@ const Index = () => {
       }, 150);
     }
     
+    // Camera shake effect for gunshot
+    if (cameraRef.current) {
+      const originalRotation = cameraRef.current.rotation.clone();
+      
+      // Random shake direction
+      cameraRef.current.rotation.x += (Math.random() - 0.5) * 0.01;
+      cameraRef.current.rotation.y += (Math.random() - 0.5) * 0.01;
+      
+      // Return to original position
+      setTimeout(() => {
+        if (cameraRef.current) {
+          cameraRef.current.rotation.set(
+            originalRotation.x,
+            originalRotation.y,
+            originalRotation.z
+          );
+        }
+      }, 100);
+    }
+    
     // Check for hits
     if (cameraRef.current && sceneRef.current) {
       const result = shootZombie(
@@ -402,6 +593,18 @@ const Index = () => {
           }));
           
           zombiesKilled.current++;
+          
+          // Play zombie death sound
+          toast({
+            description: "Zombie killed!",
+            duration: 800,
+          });
+        } else if (result.hit) {
+          // Hit but not killed sound
+          toast({
+            description: "Zombie hit!",
+            duration: 500,
+          });
         }
       }
     }
@@ -418,6 +621,12 @@ const Index = () => {
       weaponRef.current.rotation.x = 0.5;
     }
     
+    // Reload sound
+    toast({
+      description: "Reloading...",
+      duration: 2000,
+    });
+    
     // Reload timer
     setTimeout(() => {
       setGameState(prev => ({
@@ -430,6 +639,12 @@ const Index = () => {
       }
       
       reloading.current = false;
+      
+      // Reload complete sound
+      toast({
+        description: "Reload complete!",
+        duration: 1000,
+      });
     }, 2000);
   };
   
@@ -456,6 +671,37 @@ const Index = () => {
           health: newHealth
         };
       });
+      
+      // Player grunt/pain sound based on damage
+      if (damage > 20) {
+        toast({
+          description: "You're badly hurt!",
+          duration: 1500,
+        });
+      } else {
+        toast({
+          description: "You've been hit!",
+          duration: 1000,
+        });
+      }
+      
+      // Camera shake effect for damage
+      if (cameraRef.current) {
+        const intensity = Math.min(damage / 100, 0.05);
+        const shakeEffect = () => {
+          if (!cameraRef.current) return;
+          
+          cameraRef.current.rotation.x += (Math.random() - 0.5) * intensity;
+          cameraRef.current.rotation.y += (Math.random() - 0.5) * intensity;
+          
+          if (intensity > 0.01) {
+            intensity *= 0.9;
+            requestAnimationFrame(shakeEffect);
+          }
+        };
+        
+        shakeEffect();
+      }
       
       // Reset damage status after delay
       setTimeout(() => {
@@ -505,22 +751,22 @@ const Index = () => {
       switch (zombieType) {
         case 'runner':
           health = 50;
-          speed = 0.05;
+          speed = 0.03;
           damage = 10;
           break;
         case 'tank':
           health = 200;
-          speed = 0.02;
+          speed = 0.01;
           damage = 25;
           break;
         default: // walker
           health = 100;
-          speed = 0.03;
+          speed = 0.015;
           damage = 15;
       }
       
       // Add wave-based difficulty scaling
-      speed += 0.002 * (gameState.wave - 1);
+      speed += 0.001 * (gameState.wave - 1);
       health += 10 * (gameState.wave - 1);
       
       // Create zombie object
@@ -532,7 +778,9 @@ const Index = () => {
         speed,
         damage,
         model: zombieModel,
-        isDead: false
+        isDead: false,
+        lastMoveTime: Date.now(),
+        screamChance: Math.random() * 0.01
       };
       
       newZombies.push(zombie);
@@ -551,7 +799,8 @@ const Index = () => {
       score: 0,
       wave: 1,
       gameStatus: 'playing',
-      kills: 0
+      kills: 0,
+      dayTime: 0.2 // Start at night-time
     });
     
     zombiesRef.current = [];
@@ -574,7 +823,7 @@ const Index = () => {
     // Show wave notification
     toast({
       title: "Wave 1",
-      description: "Zombies are coming!",
+      description: "They're coming for you...",
       duration: 3000,
     });
   };
@@ -605,7 +854,7 @@ const Index = () => {
     // Show wave notification
     toast({
       title: `Wave ${nextWave}`,
-      description: `${zombieCount} zombies are approaching!`,
+      description: `${zombieCount} zombies approaching! They're getting stronger...`,
       duration: 3000,
     });
   };
@@ -655,6 +904,13 @@ const Index = () => {
       (document as any).mozExitPointerLock;
     
     document.exitPointerLock();
+    
+    // Death notification
+    toast({
+      title: "You've died",
+      description: `You survived ${gameState.wave} waves and killed ${gameState.kills} zombies.`,
+      duration: 5000,
+    });
   };
   
   return (
@@ -675,7 +931,7 @@ const Index = () => {
         />
       )}
       
-      <DamageOverlay showDamage={showDamage.current} />
+      <DamageOverlay showDamage={showDamage.current} health={gameState.health} />
     </div>
   );
 };
