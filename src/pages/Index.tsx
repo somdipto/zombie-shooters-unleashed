@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { v4 as uuidv4 } from 'uuid';
@@ -687,15 +686,17 @@ const Index = () => {
       
       // Camera shake effect for damage
       if (cameraRef.current) {
-        const intensity = Math.min(damage / 100, 0.05);
+        // Use let instead of const since we need to modify this value
+        let intensityValue = Math.min(damage / 100, 0.05);
+        
         const shakeEffect = () => {
           if (!cameraRef.current) return;
           
-          cameraRef.current.rotation.x += (Math.random() - 0.5) * intensity;
-          cameraRef.current.rotation.y += (Math.random() - 0.5) * intensity;
+          cameraRef.current.rotation.x += (Math.random() - 0.5) * intensityValue;
+          cameraRef.current.rotation.y += (Math.random() - 0.5) * intensityValue;
           
-          if (intensity > 0.01) {
-            intensity *= 0.9;
+          if (intensityValue > 0.01) {
+            intensityValue *= 0.9;
             requestAnimationFrame(shakeEffect);
           }
         };
