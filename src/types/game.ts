@@ -8,6 +8,7 @@ export interface GameState {
   gameStatus: 'menu' | 'playing' | 'paused' | 'gameover';
   kills: number;
   dayTime: number; // 0-1 value representing time of day cycle
+  mouseSensitivity: number; // Mouse sensitivity setting
 }
 
 export interface Zombie {

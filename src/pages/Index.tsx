@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { v4 as uuidv4 } from 'uuid';
@@ -35,7 +36,8 @@ const Index = () => {
     wave: 1,
     gameStatus: 'menu',
     kills: 0,
-    dayTime: 0.2 // Start at night-time for horror atmosphere
+    dayTime: 0.2, // Start at night-time for horror atmosphere
+    mouseSensitivity: 0.002 // Default mouse sensitivity
   });
   
   const controlsRef = useRef<ControlKeys>({
@@ -62,6 +64,9 @@ const Index = () => {
     ambientLightIntensity: 0.7,
     skyColor: '#1a1a1a'
   });
+  const mouseMovement = useRef<{x: number, y: number}>({ x: 0, y: 0 });
+  const weatherRef = useRef<'clear' | 'cloudy' | 'foggy' | 'rainy'>('clear');
+  const weatherChangeTime = useRef(0);
   
   // Initialize game
   useEffect(() => {
@@ -123,6 +128,19 @@ const Index = () => {
       const deltaTime = Math.min(time - lastTime.current, 100);
       lastTime.current = time;
       
+      // Update weather occasionally
+      if (gameState.gameStatus === 'playing' && time - weatherChangeTime.current > 60000) { // Change weather every minute
+        weatherChangeTime.current = time;
+        const weathers: Array<'clear' | 'cloudy' | 'foggy' | 'rainy'> = ['clear', 'cloudy', 'foggy', 'rainy'];
+        weatherRef.current = weathers[Math.floor(Math.random() * weathers.length)];
+        
+        toast({
+          title: "Weather Change",
+          description: `The weather is changing to ${weatherRef.current}...`,
+          duration: 3000,
+        });
+      }
+      
       // Update day/night cycle if playing
       if (gameState.gameStatus === 'playing') {
         // Very slow day/night cycle - one full cycle every 15 minutes
@@ -133,12 +151,30 @@ const Index = () => {
         }));
         
         // Update scene based on time of day
-        updateEnvironment(gameState.dayTime);
+        updateEnvironment(gameState.dayTime, weatherRef.current);
       }
       
       // Update player movement if playing
       if (gameState.gameStatus === 'playing') {
         updatePlayerMovement(deltaTime);
+        
+        // Smoothly apply mouse movement
+        if (cameraRef.current && (mouseMovement.current.x !== 0 || mouseMovement.current.y !== 0)) {
+          // Apply mouse movement with slight acceleration/deceleration
+          cameraRef.current.rotation.y -= mouseMovement.current.x * gameState.mouseSensitivity;
+          
+          // Limit vertical look
+          const verticalLook = cameraRef.current.rotation.x - mouseMovement.current.y * gameState.mouseSensitivity;
+          cameraRef.current.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, verticalLook));
+          
+          // Decelerate mouse movement
+          mouseMovement.current.x *= 0.8;
+          mouseMovement.current.y *= 0.8;
+          
+          // Reset when below threshold
+          if (Math.abs(mouseMovement.current.x) < 0.001) mouseMovement.current.x = 0;
+          if (Math.abs(mouseMovement.current.y) < 0.001) mouseMovement.current.y = 0;
+        }
       }
       
       // Update zombie movement if playing
@@ -192,6 +228,25 @@ const Index = () => {
         }
       }
       
+      // Simulate ambient city sounds
+      if (gameState.gameStatus === 'playing' && Math.random() > 0.997) {
+        const sounds = [
+          "Distant explosion",
+          "Wind howling through buildings",
+          "Creaking metal",
+          "Distant scream",
+          "Breaking glass",
+          "Collapsing structure"
+        ];
+        
+        const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+        
+        toast({
+          description: `*${randomSound}*`,
+          duration: 2000,
+        });
+      }
+      
       // Check if wave is complete
       if (
         gameState.gameStatus === 'playing' &&
@@ -222,10 +277,10 @@ const Index = () => {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [gameState.gameStatus, gameState.dayTime]);
+  }, [gameState.gameStatus, gameState.dayTime, gameState.mouseSensitivity]);
   
   // Update environment based on time of day
-  const updateEnvironment = (dayTime: number) => {
+  const updateEnvironment = (dayTime: number, weather: 'clear' | 'cloudy' | 'foggy' | 'rainy' = 'clear') => {
     if (!sceneRef.current) return;
     
     // Circle from dawn (0) to noon (0.25) to sunset (0.5) to midnight (0.75)
@@ -242,75 +297,109 @@ const Index = () => {
       timeOfDay = 'sunset';
     }
     
-    // Update fog based on time of day
+    // Update fog based on time of day and weather
     if (sceneRef.current.fog instanceof THREE.FogExp2) {
+      // Base colors for time of day
+      let fogColor, fogDensity;
+      
       switch (timeOfDay) {
         case 'dawn':
-          sceneRef.current.fog.color.set('#8B4513');
-          sceneRef.current.fog.density = 0.02;
+          fogColor = '#8B4513';
+          fogDensity = 0.02;
           break;
         case 'day':
-          sceneRef.current.fog.color.set('#CCCCCC');
-          sceneRef.current.fog.density = 0.01;
+          fogColor = '#CCCCCC';
+          fogDensity = 0.01;
           break;
         case 'sunset':
-          sceneRef.current.fog.color.set('#CC6600');
-          sceneRef.current.fog.density = 0.015;
+          fogColor = '#CC6600';
+          fogDensity = 0.015;
           break;
         case 'night':
-          sceneRef.current.fog.color.set('#1a1a1a');
-          sceneRef.current.fog.density = 0.025;
+          fogColor = '#1a1a1a';
+          fogDensity = 0.025;
           break;
       }
+      
+      // Modify based on weather
+      switch (weather) {
+        case 'foggy':
+          fogDensity *= 2.5;
+          break;
+        case 'rainy':
+          fogColor = '#546E7A';
+          fogDensity *= 1.5;
+          break;
+        case 'cloudy':
+          fogColor = '#78909C';
+          break;
+      }
+      
+      sceneRef.current.fog.color.set(fogColor);
+      sceneRef.current.fog.density = fogDensity;
     }
     
     // Update lighting
     sceneRef.current.traverse(object => {
       if (object instanceof THREE.DirectionalLight) {
-        // Sun/moon light
+        // Sun/moon light - intensity reduced for cloudy/rainy weather
+        let lightColor, lightIntensity;
+        
         switch (timeOfDay) {
           case 'dawn':
-            object.color.set('#FFA07A');
-            object.intensity = 0.6;
+            lightColor = '#FFA07A';
+            lightIntensity = 0.6;
             break;
           case 'day':
-            object.color.set('#FFFFFF');
-            object.intensity = 1.0;
+            lightColor = '#FFFFFF';
+            lightIntensity = 1.0;
             break;
           case 'sunset':
-            object.color.set('#FF4500');
-            object.intensity = 0.7;
+            lightColor = '#FF4500';
+            lightIntensity = 0.7;
             break;
           case 'night':
-            object.color.set('#A0A0FF');
-            object.intensity = 0.3;
+            lightColor = '#A0A0FF';
+            lightIntensity = 0.3;
             break;
         }
+        
+        // Reduce light intensity based on weather
+        if (weather === 'cloudy') lightIntensity *= 0.7;
+        if (weather === 'rainy') lightIntensity *= 0.5;
+        if (weather === 'foggy') lightIntensity *= 0.6;
+        
+        object.color.set(lightColor);
+        object.intensity = lightIntensity;
       } else if (object instanceof THREE.AmbientLight) {
         // Ambient light
+        let ambientColor, ambientIntensity;
+        
         switch (timeOfDay) {
           case 'dawn':
-            object.color.set('#323232');
-            object.intensity = 0.6;
+            ambientColor = '#323232';
+            ambientIntensity = 0.6;
             break;
           case 'day':
-            object.color.set('#454545');
-            object.intensity = 0.8;
+            ambientColor = '#454545';
+            ambientIntensity = 0.8;
             break;
           case 'sunset':
-            object.color.set('#302520');
-            object.intensity = 0.5;
+            ambientColor = '#302520';
+            ambientIntensity = 0.5;
             break;
           case 'night':
-            object.color.set('#151520');
-            object.intensity = 0.3;
+            ambientColor = '#151520';
+            ambientIntensity = 0.3;
             break;
         }
+        
+        object.color.set(ambientColor);
+        object.intensity = ambientIntensity;
       } else if (object instanceof THREE.PointLight) {
         // Fire lights become more visible at night
         if (timeOfDay === 'night' || timeOfDay === 'sunset') {
           object.intensity = 1.8;
-          object.distance *= 1.2;
         } else {
           object.intensity = 1.0;
         }
@@ -376,14 +465,11 @@ const Index = () => {
     };
     
     const handleMouseMove = (e: MouseEvent) => {
-      if (gameState.gameStatus !== 'playing' || !cameraRef.current) return;
+      if (gameState.gameStatus !== 'playing') return;
       
-      const sensitivity = 0.002;
-      cameraRef.current.rotation.y -= e.movementX * sensitivity;
-      
-      // Limit vertical look
-      const verticalLook = cameraRef.current.rotation.x - e.movementY * sensitivity;
-      cameraRef.current.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, verticalLook));
+      // Store mouse movement for smooth application
+      mouseMovement.current.x += e.movementX;
+      mouseMovement.current.y += e.movementY;
     };
     
     const handleMouseDown = (e: MouseEvent) => {
@@ -801,13 +887,16 @@ const Index = () => {
       wave: 1,
       gameStatus: 'playing',
       kills: 0,
-      dayTime: 0.2 // Start at night-time
+      dayTime: 0.2, // Start at night-time
+      mouseSensitivity: 0.002 // Default mouse sensitivity
     });
     
     zombiesRef.current = [];
     zombiesInWave.current = 0;
     zombiesKilled.current = 0;
     waveStartTime.current = performance.now();
+    weatherRef.current = 'clear';
+    weatherChangeTime.current = performance.now();
     
     // Spawn initial zombies
     spawnZombies(5);
