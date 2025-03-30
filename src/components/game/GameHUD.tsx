@@ -11,9 +11,9 @@ const GameHUD: React.FC<GameHUDProps> = ({ gameState }) => {
   
   // Get health bar color based on health
   const getHealthColor = () => {
-    if (health > 60) return 'bg-red-600';
-    if (health > 30) return 'bg-red-500';
-    return 'bg-red-400 animate-pulse';
+    if (health > 60) return 'bg-red-700';
+    if (health > 30) return 'bg-red-600';
+    return 'bg-red-500 animate-pulse';
   };
   
   // Get ammo display style based on ammo count
@@ -78,10 +78,23 @@ const GameHUD: React.FC<GameHUDProps> = ({ gameState }) => {
         </div>
       </div>
       
-      {/* Crosshair */}
+      {/* Crosshair - more tactical sight for modern weapon */}
       <div className="crosshair">
-        <div className="crosshair-inner"></div>
-        <div className="crosshair-center"></div>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-8 h-8 relative">
+            {/* Center dot */}
+            <div className="absolute top-1/2 left-1/2 w-1 h-1 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
+            
+            {/* Crosshair lines */}
+            <div className="absolute top-1/2 left-0 w-3 h-0.5 bg-white opacity-80 transform -translate-y-1/2"></div>
+            <div className="absolute top-1/2 right-0 w-3 h-0.5 bg-white opacity-80 transform -translate-y-1/2"></div>
+            <div className="absolute top-0 left-1/2 h-3 w-0.5 bg-white opacity-80 transform -translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-1/2 h-3 w-0.5 bg-white opacity-80 transform -translate-x-1/2"></div>
+            
+            {/* Outer circle */}
+            <div className="absolute inset-0 border-2 border-white rounded-full opacity-60"></div>
+          </div>
+        </div>
       </div>
       
       {/* Day/Night Indicator */}
@@ -117,6 +130,12 @@ const GameHUD: React.FC<GameHUDProps> = ({ gameState }) => {
             </>
           )}
         </div>
+      </div>
+      
+      {/* Objectives/Mission Info */}
+      <div className="absolute top-20 right-4 bg-black bg-opacity-50 p-2 rounded max-w-xs text-right">
+        <div className="text-red-400 text-xs uppercase font-bold tracking-wider mb-1">Objective</div>
+        <div className="text-white text-sm">Survive the zombie horde</div>
       </div>
     </div>
   );

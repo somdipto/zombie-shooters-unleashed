@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GameState, Zombie } from '@/types/game';
 
@@ -19,7 +18,7 @@ export const loadModel = (url: string, dracoUrl: string | null = null): Promise<
 // Function to create the scene
 export const createScene = (): THREE.Scene => {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2('#8B0000', 0.015);
+  scene.fog = new THREE.FogExp2('#661c0d', 0.012); // Reddish fog color matching the image
   return scene;
 };
 
@@ -38,7 +37,7 @@ export const createRenderer = (): THREE.WebGLRenderer => {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1;
+  renderer.toneMappingExposure = 1.2; // Increased exposure for dramatic effect
   renderer.outputEncoding = THREE.sRGBEncoding;
   return renderer;
 };
@@ -46,164 +45,209 @@ export const createRenderer = (): THREE.WebGLRenderer => {
 // Function to create the environment
 export const createEnvironment = (scene: THREE.Scene): void => {
   // Add ambient light
-  const ambientLight = new THREE.AmbientLight('#454545', 0.7);
+  const ambientLight = new THREE.AmbientLight('#5c3c2e', 0.4); // Warmer ambient light
   scene.add(ambientLight);
 
   // Add directional light (sun/moon)
-  const directionalLight = new THREE.DirectionalLight('#FFFFFF', 1);
-  directionalLight.position.set(1, 1, 1).normalize();
+  const directionalLight = new THREE.DirectionalLight('#ff7f50', 1.2); // Orange-ish sunset light
+  directionalLight.position.set(-1, 0.5, -0.5).normalize(); // Position light for sunset
+  directionalLight.castShadow = true;
+  directionalLight.shadow.mapSize.width = 2048;
+  directionalLight.shadow.mapSize.height = 2048;
+  directionalLight.shadow.camera.near = 0.5;
+  directionalLight.shadow.camera.far = 100;
+  directionalLight.shadow.bias = -0.0001;
   scene.add(directionalLight);
 
-  // Create skybox
+  // Create apocalyptic skybox
   const skyboxGeometry = new THREE.BoxGeometry(500, 500, 500);
   const skyboxMaterials = [
-    new THREE.MeshBasicMaterial({ color: '#87CEEB', side: THREE.BackSide }), // right
-    new THREE.MeshBasicMaterial({ color: '#87CEEB', side: THREE.BackSide }), // left
-    new THREE.MeshBasicMaterial({ color: '#4682B4', side: THREE.BackSide }), // top
-    new THREE.MeshBasicMaterial({ color: '#556B2F', side: THREE.BackSide }), // bottom
-    new THREE.MeshBasicMaterial({ color: '#87CEEB', side: THREE.BackSide }), // front
-    new THREE.MeshBasicMaterial({ color: '#87CEEB', side: THREE.BackSide }), // back
+    new THREE.MeshBasicMaterial({ color: '#4a1e1e', side: THREE.BackSide }), // right - dark red
+    new THREE.MeshBasicMaterial({ color: '#4a1e1e', side: THREE.BackSide }), // left - dark red
+    new THREE.MeshBasicMaterial({ color: '#994400', side: THREE.BackSide }), // top - orange-brown
+    new THREE.MeshBasicMaterial({ color: '#331a00', side: THREE.BackSide }), // bottom - dark brown
+    new THREE.MeshBasicMaterial({ color: '#4a1e1e', side: THREE.BackSide }), // front - dark red
+    new THREE.MeshBasicMaterial({ color: '#4a1e1e', side: THREE.BackSide }), // back - dark red
   ];
   const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
   scene.add(skybox);
 
   // Add fog
-  scene.fog = new THREE.FogExp2('#8B0000', 0.015);
+  scene.fog = new THREE.FogExp2('#661c0d', 0.012); // Reddish fog matching the image
 
   // Add ground
   const groundGeometry = new THREE.PlaneGeometry(100, 100);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: '#228B22', roughness: 0.9 });
+  const groundMaterial = new THREE.MeshStandardMaterial({ 
+    color: '#3d3d3d', 
+    roughness: 0.9,
+    metalness: 0.1
+  });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Add urban environment elements
-  createUrbanEnvironment(scene);
+  // Add debris to ground
+  for (let i = 0; i < 500; i++) {
+    const debrisGeometry = new THREE.BoxGeometry(
+      0.1 + Math.random() * 0.3,
+      0.05 + Math.random() * 0.1,
+      0.1 + Math.random() * 0.3
+    );
+    const debrisMaterial = new THREE.MeshStandardMaterial({
+      color: Math.random() > 0.5 ? '#5a5a5a' : '#3d3d3d',
+      roughness: 0.9
+    });
+    const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+    debris.position.set(
+      (Math.random() - 0.5) * 80,
+      0.05,
+      (Math.random() - 0.5) * 80
+    );
+    debris.rotation.y = Math.random() * Math.PI;
+    debris.castShadow = true;
+    debris.receiveShadow = true;
+    scene.add(debris);
+  }
 
-  // Add some trees
-  for (let i = 0; i < 10; i++) {
-    const treeHeight = 3 + Math.random() * 3;
-    const treeGeometry = new THREE.CylinderGeometry(0.5, 0.5, treeHeight, 3);
-    const treeMaterial = new THREE.MeshStandardMaterial({ color: '#8B4513', roughness: 0.8 });
+  // Add apocalyptic urban environment
+  createApocalypticUrbanEnvironment(scene);
+
+  // Add some dead trees as in the image
+  for (let i = 0; i < 15; i++) {
+    const treeHeight = 5 + Math.random() * 5;
+    const treeGeometry = new THREE.CylinderGeometry(0.3, 0.5, treeHeight, 5);
+    const treeMaterial = new THREE.MeshStandardMaterial({ 
+      color: '#3d2817', 
+      roughness: 0.9,
+      metalness: 0.1 
+    });
     const tree = new THREE.Mesh(treeGeometry, treeMaterial);
     tree.position.x = Math.random() * 80 - 40;
     tree.position.z = Math.random() * 80 - 40;
     tree.position.y = treeHeight / 2;
     tree.castShadow = true;
-    tree.receiveShadow = false;
+    tree.receiveShadow = true;
     scene.add(tree);
 
-    const leavesHeight = 2 + Math.random() * 1;
-    const leavesGeometry = new THREE.SphereGeometry(1, 7, 7);
-    const leavesMaterial = new THREE.MeshStandardMaterial({ color: '#006400', roughness: 0.8 });
-    const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-    leaves.position.x = tree.position.x;
-    leaves.position.z = tree.position.z;
-    leaves.position.y = tree.position.y + treeHeight / 2 + leavesHeight / 2 - 1;
-    leaves.castShadow = true;
-    leaves.receiveShadow = false;
-    scene.add(leaves);
+    // Create sparse branches for dead trees
+    const branchCount = 2 + Math.floor(Math.random() * 4);
+    for (let j = 0; j < branchCount; j++) {
+      const branchGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1 + Math.random() * 2, 3);
+      const branchMaterial = new THREE.MeshStandardMaterial({ 
+        color: '#3d2817',
+        roughness: 0.9
+      });
+      const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+      
+      // Position branch along tree trunk
+      const heightPos = (Math.random() * 0.6 + 0.3) * treeHeight;
+      const angle = Math.random() * Math.PI * 2;
+      
+      branch.position.set(
+        tree.position.x + Math.cos(angle) * 0.4,
+        heightPos,
+        tree.position.z + Math.sin(angle) * 0.4
+      );
+      
+      // Rotate branch outward from trunk
+      branch.rotation.z = Math.PI / 2 - Math.random() * 0.6;
+      branch.rotation.y = angle;
+      branch.castShadow = true;
+      scene.add(branch);
+    }
   }
 
-  // Add some rocks
-  for (let i = 0; i < 15; i++) {
-    const rockSize = 0.5 + Math.random() * 1;
-    const rockGeometry = new THREE.SphereGeometry(rockSize, 8, 8);
-    const rockMaterial = new THREE.MeshStandardMaterial({ color: '#808080', roughness: 0.9 });
-    const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-    rock.position.x = Math.random() * 80 - 40;
-    rock.position.z = Math.random() * 80 - 40;
-    rock.position.y = rockSize / 2 - 0.3;
-    rock.castShadow = true;
-    rock.receiveShadow = true;
-    scene.add(rock);
-  }
-
-  // Add some fire pits
-  for (let i = 0; i < 3; i++) {
+  // Add fire pits and barrels with fire for the apocalyptic look
+  for (let i = 0; i < 8; i++) {
     const firePitX = Math.random() * 60 - 30;
     const firePitZ = Math.random() * 60 - 30;
 
-    // Pit
-    const pitGeometry = new THREE.CylinderGeometry(1, 1, 0.5, 16);
-    const pitMaterial = new THREE.MeshStandardMaterial({ color: '#333333', roughness: 0.9 });
-    const pit = new THREE.Mesh(pitGeometry, pitMaterial);
-    pit.position.set(firePitX, 0.25, firePitZ);
-    pit.receiveShadow = true;
-    scene.add(pit);
-
-    // Logs
-    const logGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
-    const logMaterial = new THREE.MeshStandardMaterial({ color: '#4A3000', roughness: 0.8 });
-
-    const log1 = new THREE.Mesh(logGeometry, logMaterial);
-    log1.position.set(firePitX + 0.2, 0.6, firePitZ + 0.2);
-    log1.rotation.x = Math.PI / 2;
-    scene.add(log1);
-
-    const log2 = new THREE.Mesh(logGeometry, logMaterial);
-    log2.position.set(firePitX - 0.2, 0.6, firePitZ - 0.2);
-    log2.rotation.x = Math.PI / 2;
-    scene.add(log2);
+    // Barrel
+    const barrelGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12);
+    const barrelMaterial = new THREE.MeshStandardMaterial({ 
+      color: '#5d4037', 
+      roughness: 0.8,
+      metalness: 0.5
+    });
+    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+    barrel.position.set(firePitX, 0.6, firePitZ);
+    barrel.receiveShadow = true;
+    barrel.castShadow = true;
+    scene.add(barrel);
 
     // Fire
     const fireGeometry = new THREE.SphereGeometry(0.4, 8, 8);
-    const fireMaterial = new THREE.MeshBasicMaterial({ color: '#FFA500', transparent: true, opacity: 0.8 });
+    const fireMaterial = new THREE.MeshBasicMaterial({ 
+      color: '#ff4500', 
+      transparent: true, 
+      opacity: 0.8 
+    });
     const fire = new THREE.Mesh(fireGeometry, fireMaterial);
-    fire.position.set(firePitX, 1, firePitZ);
+    fire.position.set(firePitX, 1.3, firePitZ);
     scene.add(fire);
 
     // Add light to the fire
-    const fireLight = new THREE.PointLight('#FFA500', 1, 5);
+    const fireLight = new THREE.PointLight('#ff7700', 1.5, 10);
     fireLight.position.set(firePitX, 1.5, firePitZ);
     scene.add(fireLight);
   }
 
-  // Add atmospheric particles
+  // Add atmospheric particles for ash and embers
   createAtmosphericParticles(scene);
 };
 
-// Function to create urban environment
-const createUrbanEnvironment = (scene: THREE.Scene): void => {
-  // Create streets
+// Function to create apocalyptic urban environment
+const createApocalypticUrbanEnvironment = (scene: THREE.Scene): void => {
+  // Create broken streets
   const streetWidth = 10;
   const streetLength = 100;
   const streetGeometry = new THREE.PlaneGeometry(streetWidth, streetLength);
   const streetMaterial = new THREE.MeshStandardMaterial({ 
-    color: '#333333',
-    roughness: 0.8
+    color: '#2d2d2d',
+    roughness: 0.9,
+    metalness: 0.1
   });
 
-  // Main street along z-axis
+  // Main street along z-axis with cracks and damage
   const mainStreet = new THREE.Mesh(streetGeometry, streetMaterial);
   mainStreet.rotation.x = -Math.PI / 2;
   mainStreet.position.set(0, 0.05, 0);
+  mainStreet.receiveShadow = true;
   scene.add(mainStreet);
+  
+  // Add cracks to the street
+  addCracksToStreet(scene, 0, 0, streetWidth, streetLength);
 
   // Cross street along x-axis
   const crossStreet = new THREE.Mesh(streetGeometry, streetMaterial);
   crossStreet.rotation.x = -Math.PI / 2;
   crossStreet.rotation.z = Math.PI / 2;
   crossStreet.position.set(0, 0.05, 0);
+  crossStreet.receiveShadow = true;
   scene.add(crossStreet);
+  
+  // Add cracks to cross street
+  addCracksToStreet(scene, 0, 0, streetWidth, streetLength, true);
 
-  // Add sidewalks
-  const sidewalkGeometry = new THREE.BoxGeometry(streetWidth + 2, 0.2, streetLength);
-  const sidewalkMaterial = new THREE.MeshStandardMaterial({ 
-    color: '#888888', 
-    roughness: 0.7 
-  });
+  // Add damaged vehicles
+  for (let i = 0; i < 12; i++) {
+    createDamagedVehicle(
+      scene,
+      (Math.random() - 0.5) * 40,
+      (Math.random() - 0.5) * 40
+    );
+  }
 
-  // Add buildings
+  // Create destroyed buildings
   const buildingTypes = [
-    { width: 8, depth: 8, maxHeight: 15, color: '#A0522D' },  // Residential
-    { width: 10, depth: 10, maxHeight: 25, color: '#708090' }, // Commercial
-    { width: 15, depth: 15, maxHeight: 40, color: '#4682B4' }  // Skyscraper
+    { width: 8, depth: 8, maxHeight: 12, color: '#4d4d4d' },  // Residential
+    { width: 10, depth: 10, maxHeight: 20, color: '#3d3d3d' }, // Commercial
+    { width: 15, depth: 15, maxHeight: 35, color: '#2d2d2d' }  // Skyscraper
   ];
 
-  // Create building blocks
-  for (let i = 0; i < 20; i++) {
+  // Create building blocks - many destroyed
+  for (let i = 0; i < 25; i++) {
     const buildingType = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
     const buildingHeight = 5 + Math.random() * buildingType.maxHeight;
     
@@ -219,123 +263,326 @@ const createUrbanEnvironment = (scene: THREE.Scene): void => {
       z = -40 + Math.random() * 80;
     }
 
+    // Almost all buildings should be destroyed in apocalypse
+    const isDestroyed = Math.random() > 0.1;
+    const destructionLevel = Math.random() * 0.8 + 0.2; // 0.2-1.0 destruction level
+
     // Create main building structure
-    createBuilding(
+    createDestroyedBuilding(
       scene, 
       x, 
       z, 
       buildingType.width, 
       buildingHeight, 
       buildingType.depth, 
-      buildingType.color
+      buildingType.color,
+      isDestroyed,
+      destructionLevel
     );
   }
 
-  // Add street lights
+  // Add damaged street lights
   for (let i = -40; i <= 40; i += 20) {
-    createStreetLight(scene, i, streetWidth/2 + 1, 1);
-    createStreetLight(scene, i, -streetWidth/2 - 1, 1);
-    createStreetLight(scene, streetWidth/2 + 1, i, 1);
-    createStreetLight(scene, -streetWidth/2 - 1, i, 1);
+    if (Math.random() > 0.5) { // Some street lights are missing
+      createDamagedStreetLight(scene, i, streetWidth/2 + 1, Math.random() > 0.7);
+    }
+    
+    if (Math.random() > 0.5) {
+      createDamagedStreetLight(scene, i, -streetWidth/2 - 1, Math.random() > 0.7);
+    }
+    
+    if (Math.random() > 0.5) {
+      createDamagedStreetLight(scene, streetWidth/2 + 1, i, Math.random() > 0.7);
+    }
+    
+    if (Math.random() > 0.5) {
+      createDamagedStreetLight(scene, -streetWidth/2 - 1, i, Math.random() > 0.7);
+    }
   }
 
-  // Add street props
-  for (let i = 0; i < 10; i++) {
-    // Position props along sidewalks
-    const x = (Math.random() > 0.5 ? 1 : -1) * (streetWidth/2 + 0.8);
+  // Add street props and debris
+  for (let i = 0; i < 25; i++) {
+    // Position props throughout the area
+    const x = -30 + Math.random() * 60;
     const z = -30 + Math.random() * 60;
     
-    if (Math.random() > 0.7) {
-      createBench(scene, x, z);
+    const propType = Math.random();
+    if (propType < 0.3) {
+      createBrokenBench(scene, x, z);
+    } else if (propType < 0.6) {
+      createTrashBin(scene, x, z, true); // Overturned
     } else {
-      createTrashBin(scene, x, z);
+      createDebrisPile(scene, x, z);
     }
+  }
+
+  // Add barricades as seen in the images
+  for (let i = 0; i < 8; i++) {
+    createBarricade(
+      scene,
+      -25 + Math.random() * 50,
+      -25 + Math.random() * 50
+    );
   }
 };
 
-// Function to create a building
-const createBuilding = (
+// Function to add cracks to a street
+const addCracksToStreet = (
+  scene: THREE.Scene, 
+  centerX: number, 
+  centerZ: number, 
+  width: number, 
+  length: number,
+  isHorizontal: boolean = false
+): void => {
+  // Add major crack along the street
+  const crackGeometry = new THREE.PlaneGeometry(
+    isHorizontal ? length * 0.8 : Math.random() * 2 + 1,
+    isHorizontal ? Math.random() * 2 + 1 : length * 0.8
+  );
+  
+  const crackMaterial = new THREE.MeshStandardMaterial({
+    color: '#1a1a1a',
+    roughness: 1,
+    metalness: 0
+  });
+  
+  const crack = new THREE.Mesh(crackGeometry, crackMaterial);
+  crack.rotation.x = -Math.PI / 2;
+  crack.position.set(
+    centerX + (isHorizontal ? 0 : (Math.random() - 0.5) * width * 0.8),
+    0.06,
+    centerZ + (isHorizontal ? (Math.random() - 0.5) * width * 0.8 : 0)
+  );
+  crack.receiveShadow = true;
+  scene.add(crack);
+  
+  // Add smaller cracks
+  for (let i = 0; i < 15; i++) {
+    const smallCrackGeometry = new THREE.PlaneGeometry(
+      Math.random() * 1.5 + 0.5,
+      Math.random() * 1.5 + 0.5
+    );
+    
+    const smallCrack = new THREE.Mesh(smallCrackGeometry, crackMaterial);
+    smallCrack.rotation.x = -Math.PI / 2;
+    smallCrack.rotation.z = Math.random() * Math.PI;
+    
+    smallCrack.position.set(
+      centerX + (Math.random() - 0.5) * width * 0.9,
+      0.061,
+      centerZ + (Math.random() - 0.5) * length * 0.9
+    );
+    
+    smallCrack.receiveShadow = true;
+    scene.add(smallCrack);
+  }
+  
+  // Add potholes
+  for (let i = 0; i < 8; i++) {
+    const holeRadius = Math.random() * 1.5 + 0.5;
+    const holeGeometry = new THREE.CircleGeometry(holeRadius, 8);
+    const holeMaterial = new THREE.MeshStandardMaterial({
+      color: '#0a0a0a',
+      roughness: 1,
+      metalness: 0
+    });
+    
+    const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+    hole.rotation.x = -Math.PI / 2;
+    
+    hole.position.set(
+      centerX + (Math.random() - 0.5) * width * 0.7,
+      0.06,
+      centerZ + (Math.random() - 0.5) * length * 0.7
+    );
+    
+    hole.receiveShadow = true;
+    scene.add(hole);
+  }
+};
+
+// Function to create a destroyed building
+const createDestroyedBuilding = (
   scene: THREE.Scene, 
   x: number, 
   z: number, 
   width: number, 
   height: number, 
   depth: number,
-  color: string
+  color: string,
+  isDestroyed: boolean = true,
+  destructionLevel: number = 0.7
 ): void => {
-  const isDestroyed = Math.random() > 0.4;
-
-  // Building base
-  const buildingGeometry = new THREE.BoxGeometry(width, height, depth);
+  // Adjust height based on destruction level if building is destroyed
+  const actualHeight = isDestroyed ? height * (1 - destructionLevel * 0.7) : height;
+  
+  // Building base - make it irregular if destroyed
+  let buildingGeometry;
+  
+  if (isDestroyed) {
+    // Create custom geometry for destroyed building (irregular shape)
+    const vertices = [
+      // Base (bottom)
+      -width/2, 0, -depth/2,
+      width/2, 0, -depth/2,
+      width/2, 0, depth/2,
+      -width/2, 0, depth/2,
+      
+      // Top (modified for destruction)
+      -width/2 * (1 - Math.random() * 0.3), actualHeight, -depth/2 * (1 - Math.random() * 0.3),
+      width/2 * (1 - Math.random() * 0.3), actualHeight, -depth/2 * (1 - Math.random() * 0.3),
+      width/2 * (1 - Math.random() * 0.3), actualHeight, depth/2 * (1 - Math.random() * 0.3),
+      -width/2 * (1 - Math.random() * 0.3), actualHeight, depth/2 * (1 - Math.random() * 0.3)
+    ];
+    
+    // Convert to Float32Array
+    const positionArray = new Float32Array(vertices);
+    
+    buildingGeometry = new THREE.BoxGeometry(width, actualHeight, depth);
+    buildingGeometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3));
+  } else {
+    buildingGeometry = new THREE.BoxGeometry(width, actualHeight, depth);
+  }
+  
+  // Adjust color for destruction (make it darker)
+  let buildingColor = color;
+  if (isDestroyed) {
+    // Convert hex to rgb
+    const r = parseInt(color.slice(1, 3), 16) / 255;
+    const g = parseInt(color.slice(3, 5), 16) / 255;
+    const b = parseInt(color.slice(5, 7), 16) / 255;
+    
+    // Darken and add grey tint for destruction
+    const darkenFactor = 0.7;
+    const newR = Math.floor((r * darkenFactor) * 255).toString(16).padStart(2, '0');
+    const newG = Math.floor((g * darkenFactor) * 255).toString(16).padStart(2, '0');
+    const newB = Math.floor((b * darkenFactor) * 255).toString(16).padStart(2, '0');
+    
+    buildingColor = `#${newR}${newG}${newB}`;
+  }
+  
   const buildingMaterial = new THREE.MeshStandardMaterial({ 
-    color: color, 
-    roughness: 0.7 
+    color: buildingColor, 
+    roughness: 0.9,
+    metalness: 0.1
   });
+  
   const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-  building.position.set(x, height/2, z);
+  building.position.set(x, actualHeight/2, z);
   building.castShadow = true;
   building.receiveShadow = true;
   scene.add(building);
 
-  // Add damage to building if destroyed
+  // Add extensive damage to destroyed buildings
   if (isDestroyed) {
+    // Create exposed concrete and rebar for destroyed sections
+    const exposedHeight = height - actualHeight;
+    
+    if (exposedHeight > 1) {
+      // Exposed structure on top
+      const exposedGeometry = new THREE.BoxGeometry(
+        width * 0.9,
+        exposedHeight,
+        depth * 0.9
+      );
+      
+      const exposedMaterial = new THREE.MeshStandardMaterial({
+        color: '#3d3d3d',
+        roughness: 1,
+        metalness: 0.1
+      });
+      
+      const exposedConcrete = new THREE.Mesh(exposedGeometry, exposedMaterial);
+      exposedConcrete.position.set(
+        x,
+        actualHeight + exposedHeight/2,
+        z
+      );
+      
+      exposedConcrete.castShadow = true;
+      scene.add(exposedConcrete);
+      
+      // Add rebar (metal reinforcement bars)
+      for (let i = 0; i < 12; i++) {
+        const rebarGeometry = new THREE.CylinderGeometry(0.05, 0.05, exposedHeight * 1.5, 4);
+        const rebarMaterial = new THREE.MeshStandardMaterial({
+          color: '#8B4513',
+          roughness: 0.7,
+          metalness: 0.6
+        });
+        
+        const rebar = new THREE.Mesh(rebarGeometry, rebarMaterial);
+        
+        // Position rebars sticking out of the concrete at various angles
+        const posX = (Math.random() - 0.5) * width * 0.8;
+        const posZ = (Math.random() - 0.5) * depth * 0.8;
+        
+        rebar.position.set(
+          x + posX,
+          actualHeight + exposedHeight * 0.5,
+          z + posZ
+        );
+        
+        // Bend the rebar at random angles
+        rebar.rotation.x = (Math.random() - 0.5) * 0.5;
+        rebar.rotation.z = (Math.random() - 0.5) * 0.5;
+        
+        rebar.castShadow = true;
+        scene.add(rebar);
+      }
+    }
+
     // Create holes and damage in the building
-    const holeCount = Math.floor(1 + Math.random() * 3);
+    const holeCount = Math.floor(2 + Math.random() * 5);
     
     for (let i = 0; i < holeCount; i++) {
-      const holeSize = 2 + Math.random() * 3;
+      const holeSize = 1 + Math.random() * 2;
       const holeGeometry = new THREE.BoxGeometry(holeSize, holeSize, depth + 1);
       const holeMaterial = new THREE.MeshBasicMaterial({ 
-        color: '#000000',
+        color: '#0a0a0a',
         transparent: true,
         opacity: 0.8
       });
       
       const hole = new THREE.Mesh(holeGeometry, holeMaterial);
-      const holeX = (Math.random() - 0.5) * (width - holeSize)/2;
-      const holeY = Math.random() * (height - holeSize/2) - (height/2 - holeSize);
+      const holeX = (Math.random() - 0.5) * (width - holeSize);
+      const holeY = Math.random() * (actualHeight - holeSize/2);
       
       hole.position.set(
         x + holeX,
-        holeY + height/2,
+        holeY + holeSize/2,
         z
       );
       
       scene.add(hole);
+      
+      // Add rubble around holes
+      const rubbleCount = Math.floor(3 + Math.random() * 4);
+      for (let j = 0; j < rubbleCount; j++) {
+        createRubblePiece(
+          scene,
+          hole.position.x + (Math.random() - 0.5) * holeSize,
+          hole.position.y - holeSize/2 - 0.2,
+          hole.position.z + depth/2 + Math.random() * 0.5
+        );
+      }
     }
 
     // Add debris around the building
-    const debrisCount = Math.floor(3 + Math.random() * 5);
+    const debrisCount = Math.floor(10 + Math.random() * 15);
     
     for (let i = 0; i < debrisCount; i++) {
-      const debrisSize = 0.3 + Math.random() * 0.8;
-      const debrisGeometry = new THREE.BoxGeometry(debrisSize, debrisSize, debrisSize);
-      const debrisMaterial = new THREE.MeshStandardMaterial({ 
-        color: color, 
-        roughness: 0.9 
-      });
-      
-      const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
-      
       // Position debris around the building
       const angle = Math.random() * Math.PI * 2;
-      const distance = width/2 + Math.random() * 3;
+      const distance = width/2 + Math.random() * 5;
       
-      debris.position.set(
+      createRubblePiece(
+        scene,
         x + Math.cos(angle) * distance,
-        debrisSize/2,
+        Math.random() * 0.4,
         z + Math.sin(angle) * distance
       );
-      
-      debris.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      
-      debris.castShadow = true;
-      debris.receiveShadow = true;
-      scene.add(debris);
     }
   } else {
     // Add windows to intact buildings
@@ -346,8 +593,9 @@ const createBuilding = (
       for (let col = 0; col < windowColCount; col++) {
         if (Math.random() > 0.3) {
           const windowGeometry = new THREE.PlaneGeometry(0.8, 1);
+          const isBroken = Math.random() > 0.5;
           const windowMaterial = new THREE.MeshBasicMaterial({ 
-            color: Math.random() > 0.7 ? '#FFFF00' : '#000000',
+            color: isBroken ? '#1a1a1a' : Math.random() > 0.9 ? '#FFFF00' : '#212121',
             side: THREE.DoubleSide
           });
           
@@ -379,274 +627,127 @@ const createBuilding = (
   }
 };
 
-// Function to create a street light
-const createStreetLight = (scene: THREE.Scene, x: number, z: number, height: number): void => {
+// Function to create a piece of rubble/debris
+const createRubblePiece = (scene: THREE.Scene, x: number, y: number, z: number): void => {
+  const size = 0.3 + Math.random() * 0.8;
+  
+  let geometry;
+  const shapeType = Math.floor(Math.random() * 4);
+  
+  switch (shapeType) {
+    case 0:
+      geometry = new THREE.BoxGeometry(size, size * 0.6, size);
+      break;
+    case 1:
+      geometry = new THREE.TetrahedronGeometry(size * 0.6);
+      break;
+    case 2:
+      geometry = new THREE.DodecahedronGeometry(size * 0.5, 0);
+      break;
+    default:
+      geometry = new THREE.ConeGeometry(size * 0.5, size, 4);
+  }
+  
+  const material = new THREE.MeshStandardMaterial({ 
+    color: Math.random() > 0.7 ? '#8B4513' : '#5a5a5a', 
+    roughness: 0.9,
+    metalness: 0.1
+  });
+  
+  const rubble = new THREE.Mesh(geometry, material);
+  
+  rubble.position.set(x, y + size/2, z);
+  
+  rubble.rotation.set(
+    Math.random() * Math.PI,
+    Math.random() * Math.PI,
+    Math.random() * Math.PI
+  );
+  
+  rubble.castShadow = true;
+  rubble.receiveShadow = true;
+  scene.add(rubble);
+};
+
+// Function to create a damaged street light
+const createDamagedStreetLight = (scene: THREE.Scene, x: number, z: number, isFallen: boolean): void => {
   // Pole
-  const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 4, 8);
-  const poleMaterial = new THREE.MeshStandardMaterial({ color: '#444444' });
+  const poleHeight = isFallen ? 1 : 4;
+  const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, poleHeight, 8);
+  const poleMaterial = new THREE.MeshStandardMaterial({ 
+    color: '#555555',
+    roughness: 0.7,
+    metalness: 0.6
+  });
+  
   const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-  pole.position.set(x, 2, z);
+  
+  if (isFallen) {
+    // Fallen pole
+    pole.rotation.z = Math.PI / 2;
+    pole.position.set(x, 0.5, z);
+  } else {
+    // Standing but damaged pole (slight tilt)
+    pole.rotation.z = (Math.random() - 0.5) * 0.3;
+    pole.position.set(x, poleHeight/2, z);
+  }
+  
   pole.castShadow = true;
+  pole.receiveShadow = true;
   scene.add(pole);
 
   // Light fixture
   const fixtureGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 8);
-  const fixtureMaterial = new THREE.MeshStandardMaterial({ color: '#777777' });
+  const fixtureMaterial = new THREE.MeshStandardMaterial({ 
+    color: '#777777',
+    roughness: 0.7,
+    metalness: 0.4
+  });
+  
   const fixture = new THREE.Mesh(fixtureGeometry, fixtureMaterial);
-  fixture.position.set(x, 4, z);
-  fixture.rotation.x = Math.PI/2;
+  
+  if (isFallen) {
+    fixture.rotation.z = Math.PI / 2;
+    fixture.position.set(x + 2, 0.3, z);
+  } else {
+    fixture.rotation.x = Math.PI/2;
+    fixture.rotation.z = pole.rotation.z;
+    fixture.position.set(
+      x + Math.sin(pole.rotation.z) * 4,
+      poleHeight + Math.cos(pole.rotation.z) * 0.3,
+      z
+    );
+  }
+  
+  fixture.castShadow = true;
+  fixture.receiveShadow = true;
   scene.add(fixture);
 
-  // Light
-  const light = new THREE.PointLight('#FFFFAA', 0.8, 10);
-  light.position.set(x, 4, z);
-  scene.add(light);
+  // Light - only working on some standing lights
+  if (!isFallen && Math.random() > 0.6) {
+    const light = new THREE.PointLight('#ffaa22', 0.8, 10, 2);
+    light.position.copy(fixture.position);
+    scene.add(light);
+  }
 };
 
-// Function to create a bench
-const createBench = (scene: THREE.Scene, x: number, z: number): void => {
+// Function to create a broken bench
+const createBrokenBench = (scene: THREE.Scene, x: number, z: number): void => {
   const benchGroup = new THREE.Group();
   
-  // Seat
+  // Determine if bench is knocked over
+  const isKnockedOver = Math.random() > 0.5;
+  
+  // Seat - maybe broken
   const seatGeometry = new THREE.BoxGeometry(2, 0.1, 0.6);
-  const seatMaterial = new THREE.MeshStandardMaterial({ color: '#8B4513' });
+  const seatMaterial = new THREE.MeshStandardMaterial({ 
+    color: '#4d3319',
+    roughness: 0.9 
+  });
+  
   const seat = new THREE.Mesh(seatGeometry, seatMaterial);
-  seat.position.y = 0.5;
-  benchGroup.add(seat);
   
-  // Legs
-  const legGeometry = new THREE.BoxGeometry(0.1, 0.5, 0.6);
-  const legMaterial = new THREE.MeshStandardMaterial({ color: '#444444' });
-  
-  const leg1 = new THREE.Mesh(legGeometry, legMaterial);
-  leg1.position.set(-0.8, 0.25, 0);
-  benchGroup.add(leg1);
-  
-  const leg2 = new THREE.Mesh(legGeometry, legMaterial);
-  leg2.position.set(0.8, 0.25, 0);
-  benchGroup.add(leg2);
-  
-  // Back
-  const backGeometry = new THREE.BoxGeometry(2, 0.5, 0.1);
-  const backMaterial = new THREE.MeshStandardMaterial({ color: '#8B4513' });
-  const back = new THREE.Mesh(backGeometry, backMaterial);
-  back.position.set(0, 0.75, -0.25);
-  benchGroup.add(back);
-  
-  benchGroup.position.set(x, 0, z);
-  benchGroup.rotation.y = Math.random() * Math.PI * 2;
-  scene.add(benchGroup);
-};
-
-// Function to create a trash bin
-const createTrashBin = (scene: THREE.Scene, x: number, z: number): void => {
-  const binGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8);
-  const binMaterial = new THREE.MeshStandardMaterial({ 
-    color: Math.random() > 0.5 ? '#228B22' : '#708090',
-    roughness: 0.8
-  });
-  
-  const bin = new THREE.Mesh(binGeometry, binMaterial);
-  bin.position.set(x, 0.4, z);
-  scene.add(bin);
-};
-
-// Function to create atmospheric particles
-const createAtmosphericParticles = (scene: THREE.Scene): void => {
-  const particleCount = 1000;
-  const particleGeometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(particleCount * 3);
-  
-  for (let i = 0; i < particleCount * 3; i += 3) {
-    positions[i] = (Math.random() - 0.5) * 100;
-    positions[i + 1] = Math.random() * 20;
-    positions[i + 2] = (Math.random() - 0.5) * 100;
-  }
-  
-  particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  
-  const particleMaterial = new THREE.PointsMaterial({
-    color: 0xFFFFFF,
-    size: 0.1,
-    transparent: true,
-    opacity: 0.4
-  });
-  
-  const particles = new THREE.Points(particleGeometry, particleMaterial);
-  scene.add(particles);
-};
-
-// Function to create the weapon
-export const createWeapon = (scene: THREE.Scene, camera: THREE.PerspectiveCamera): THREE.Group => {
-  const weaponGroup = new THREE.Group();
-
-  const geometry = new THREE.BoxGeometry(0.1, 0.2, 0.5);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  const weapon = new THREE.Mesh(geometry, material);
-  weapon.position.set(0.3, -0.2, -0.5);
-  
-  weaponGroup.add(weapon);
-  camera.add(weaponGroup);
-  scene.add(camera);
-
-  return weaponGroup;
-};
-
-// Function to create a zombie
-export const createZombie = (type: 'walker' | 'runner' | 'tank', position: THREE.Vector3): THREE.Group => {
-  const zombieGroup = new THREE.Group();
-  
-  // Zombie body
-  const geometry = new THREE.BoxGeometry(0.5, 1, 0.5);
-  let color;
-
-  switch (type) {
-    case 'runner':
-      color = 0xff0000; // Red for runner
-      break;
-    case 'tank':
-      color = 0x0000ff; // Blue for tank
-      break;
-    default:
-      color = 0x00ff00; // Green for walker
-  }
-
-  const material = new THREE.MeshBasicMaterial({ color: color });
-  const zombie = new THREE.Mesh(geometry, material);
-  zombie.position.copy(position);
-  zombie.castShadow = true;
-  zombie.receiveShadow = true;
-  
-  zombieGroup.add(zombie);
-  
-  // Add scary facial features
-  const headGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-  const headMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
-  const head = new THREE.Mesh(headGeometry, headMaterial);
-  head.position.set(0, 0.7, 0);
-  zombieGroup.add(head);
-  
-  // Eyes
-  const eyeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-  
-  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  leftEye.position.set(-0.1, 0.75, 0.2);
-  zombieGroup.add(leftEye);
-  
-  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  rightEye.position.set(0.1, 0.75, 0.2);
-  zombieGroup.add(rightEye);
-  
-  // Mouth
-  const mouthGeometry = new THREE.BoxGeometry(0.2, 0.05, 0.05);
-  const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-  mouth.position.set(0, 0.65, 0.25);
-  zombieGroup.add(mouth);
-  
-  // Position the whole group
-  zombieGroup.position.copy(position);
-  
-  return zombieGroup;
-};
-
-// Function to update zombie positions
-export const updateZombies = (zombies: Zombie[], playerPosition: THREE.Vector3, deltaTime: number): void => {
-  zombies.forEach(zombie => {
-    if (!zombie.isDead) {
-      // Staggered movement timing
-      if (!zombie.lastMoveTime || Date.now() - zombie.lastMoveTime > 100) {
-        const zombieModel = zombie.model as THREE.Group;
-        const zombiePosition = new THREE.Vector3(zombie.position.x, zombie.position.y, zombie.position.z);
-        const targetPosition = playerPosition.clone();
-
-        // Calculate direction to player
-        const direction = targetPosition.sub(zombiePosition).normalize();
-
-        // Move zombie towards player
-        const speed = zombie.speed || 0.015;
-        zombiePosition.x += direction.x * speed * deltaTime;
-        zombiePosition.z += direction.z * speed * deltaTime;
-
-        // Update zombie's position
-        zombieModel.position.set(zombiePosition.x, zombiePosition.y, zombiePosition.z);
-        zombie.position = { x: zombiePosition.x, y: zombiePosition.y, z: zombiePosition.z };
-
-        // Update zombie's last move time
-        zombie.lastMoveTime = Date.now();
-
-        // Rotate zombie to face player
-        const angle = Math.atan2(direction.x, direction.z);
-        zombieModel.rotation.y = -angle;
-      }
-    }
-  });
-};
-
-// Function to handle shooting
-export const shootZombie = (
-  camera: THREE.PerspectiveCamera,
-  zombies: Zombie[],
-  scene: THREE.Scene,
-  damageAmount: number
-): { hit: boolean; zombieId?: string } => {
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2(0, 0); // Center of the screen
-
-  raycaster.setFromCamera(mouse, camera);
-
-  const hits = raycaster.intersectObjects(scene.children, true);
-
-  for (let i = 0; i < hits.length; i++) {
-    const hit = hits[i];
-    
-    // Find the zombie that was hit by checking parent hierarchy
-    for (const zombie of zombies) {
-      if (!zombie.isDead && hit.object.parent) {
-        const zombieModel = zombie.model as THREE.Group;
-        
-        if (zombieModel === hit.object || zombieModel === hit.object.parent) {
-          // Apply damage
-          zombie.health -= damageAmount;
-
-          // Check if zombie is dead
-          if (zombie.health <= 0) {
-            zombie.isDead = true;
-            scene.remove(zombieModel);
-            return { hit: true, zombieId: zombie.id };
-          }
-
-          return { hit: true, zombieId: zombie.id };
-        }
-      }
-    }
-  }
-
-  return { hit: false };
-};
-
-// Function to check for zombie collisions
-export const checkZombieCollisions = (
-  playerPosition: THREE.Vector3,
-  zombies: Zombie[]
-): { collision: boolean; damage?: number } => {
-  for (let i = 0; i < zombies.length; i++) {
-    const zombie = zombies[i];
-
-    if (!zombie.isDead) {
-      const zombieModel = zombie.model as THREE.Group;
-      const zombiePosition = zombieModel.position;
-
-      // Calculate distance between player and zombie
-      const distance = playerPosition.distanceTo(zombiePosition);
-
-      // Collision detection
-      if (distance < 1) {
-        return { collision: true, damage: zombie.damage };
-      }
-    }
-  }
-
-  return { collision: false };
-};
+  if (isKnockedOver) {
+    seat.rotation.z = Math.PI / 2;
+    seat.position.y = 0.3;
+    seat.position.x = -0.
