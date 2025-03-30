@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				zombie: {
+					blood: '#8B0000',
+					dark: '#1a0000',
+					flesh: '#C68642',
+					ground: '#2D2D2D',
+					fog: '#1a1a1a'
 				}
 			},
 			borderRadius: {
@@ -84,11 +92,26 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'damage-flash': {
+					'0%, 100%': { 
+						boxShadow: '0 0 0 0 rgba(220, 38, 38, 0)' 
+					},
+					'50%': { 
+						boxShadow: '0 0 0 15px rgba(220, 38, 38, 0.7)' 
+					}
+				},
+				'crosshair-expand': {
+					'0%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.5)' },
+					'100%': { transform: 'scale(1)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'damage-flash': 'damage-flash 0.5s ease-out',
+				'crosshair-expand': 'crosshair-expand 0.15s ease-out'
 			}
 		}
 	},

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,19 +36,12 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -97,5 +91,67 @@
 
   body {
     @apply bg-background text-foreground;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+  
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+@layer components {
+  .health-bar {
+    @apply h-4 bg-red-900 rounded-full overflow-hidden;
+  }
+  
+  .health-fill {
+    @apply h-full bg-red-600 transition-all duration-300;
+  }
+  
+  .ammo-counter {
+    @apply font-mono text-white text-xl font-bold;
+  }
+  
+  .wave-indicator {
+    @apply font-bold text-2xl text-white;
+  }
+  
+  .score-counter {
+    @apply font-mono text-white text-xl;
+  }
+  
+  .crosshair {
+    @apply fixed w-6 h-6 top-1/2 left-1/2 -mt-3 -ml-3 pointer-events-none;
+  }
+  
+  .crosshair-inner {
+    @apply absolute inset-0 border-2 border-white rounded-full opacity-70;
+  }
+  
+  .crosshair-center {
+    @apply absolute top-1/2 left-1/2 -mt-0.5 -ml-0.5 w-1 h-1 bg-white rounded-full;
+  }
+
+  .damage-overlay {
+    @apply fixed inset-0 pointer-events-none bg-red-900 opacity-0 transition-opacity duration-300;
+  }
+  
+  .menu-container {
+    @apply fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-50;
+  }
+  
+  .menu-button {
+    @apply px-8 py-3 bg-red-700 hover:bg-red-600 text-white font-bold text-xl rounded-lg transition-colors mb-4;
+  }
+  
+  .menu-title {
+    @apply text-4xl md:text-6xl font-bold text-red-600 mb-8;
   }
 }
